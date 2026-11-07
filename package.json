@@ -1,0 +1,13 @@
+{
+  "name": "beon-code-pt-br-language-pack",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Brazilian Portuguese language pack for Beon Code",
+  "scripts": {
+    "test": "node tests/validate.cjs",
+    "pack": "node build.cjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

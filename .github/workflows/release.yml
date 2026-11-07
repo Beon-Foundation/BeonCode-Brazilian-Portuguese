@@ -1,0 +1,69 @@
+name: Release Beon Code Language Pack
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify publisher and package identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node - <<'JS'
+          const manifest=require('./extension.json');
+          const [owner, repo]=process.env.GITHUB_REPOSITORY.split('/');
+          if (manifest.publisher!==owner.toLowerCase() ||
+              manifest.id!==`${manifest.publisher}.language-pack-pt-br` ||
+              manifest.repository?.url!==`https://github.com/${owner}/${repo}` ||
+              (process.env.GITHUB_REF_TYPE==='tag' && process.env.GITHUB_REF_NAME!==`v${manifest.version}`)) {
+            throw new Error('Repository owner, manifest identity, and release tag (when provided) must match.');
+          }
+          JS
+      - name: Validate language pack
+        run: npm test
+      - name: Check whether this version is already published
+        id: published
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./extension.json').version")
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build signed package
+        if: steps.published.outputs.exists == 'false'
+        env:
+          BEON_PUBLISHER_PRIVATE_KEY: ${{ secrets.BEON_PUBLISHER_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$BEON_PUBLISHER_PRIVATE_KEY"
+          KEY_FILE="$RUNNER_TEMP/publisher.private.pem"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          printf '%s\n' "$BEON_PUBLISHER_PRIVATE_KEY" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+          npm run pack -- "$KEY_FILE" dist
+      - name: Publish signed release
+        if: steps.published.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG='${{ steps.published.outputs.tag }}'
+          gh release create "$TAG" dist/*.beonx dist/SHA256SUMS.txt \
+            --target "$GITHUB_SHA" \
+            --title "Beon Code pt-BR $TAG" \
+            --notes 'Signed declarative Portuguese (Brazil) language pack for Beon Code.'

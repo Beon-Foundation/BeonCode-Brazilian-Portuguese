@@ -1,0 +1,7 @@
+.beon/
+node_modules/
+dist/
+*.pem
+*.beonx
+.env
+.DS_Store

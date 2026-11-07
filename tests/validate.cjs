@@ -1,0 +1,33 @@
+"use strict";
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const {buildBundle,verifyBundle} = require('../build.cjs');
+const root = path.resolve(__dirname,'..');
+const reference = JSON.parse(fs.readFileSync(path.join(__dirname,'en-reference.json'),'utf8'));
+const locale = JSON.parse(fs.readFileSync(path.join(root,'translations/main.i18n.json'),'utf8'));
+const manifest = JSON.parse(fs.readFileSync(path.join(root,'extension.json'),'utf8'));
+assert.equal(manifest.kind,'language-pack');
+assert.equal(manifest.apiVersion,'1.0');
+assert.equal(manifest.main,undefined);
+assert(!manifest.capabilities?.length);
+assert(!manifest.activationEvents?.length);
+assert.deepEqual(Object.keys(manifest.contributes),['localizations']);
+assert.equal(manifest.contributes.localizations[0].languageId,'pt-BR');
+assert.equal(manifest.id,`${manifest.publisher}.language-pack-pt-br`);
+assert.deepEqual(Object.keys(locale).sort(),Object.keys(reference).sort());
+const placeholders = text => [...text.matchAll(/\{([A-Za-z0-9_.-]+)\}/g)].map(match=>match[1]).sort();
+for (const [key,value] of Object.entries(locale)) {
+  assert.equal(typeof value,'string',key);
+  assert(value.length<=8000, key);
+  assert(!value.includes('\uFFFD'), key);
+  assert.deepEqual(placeholders(value),placeholders(reference[key]),key);
+}
+const pair = crypto.generateKeyPairSync('ed25519');
+const bundle = buildBundle(pair.privateKey.export({type:'pkcs8',format:'pem'}));
+assert.equal(bundle.files.length,2);
+assert(verifyBundle(bundle));
+bundle.files[1].sha256 = '0'.repeat(64);
+assert.equal(verifyBundle(bundle),false);
+console.log(`PASS: ${Object.keys(locale).length} locale keys, manifest restrictions, signing, and tamper detection.`);

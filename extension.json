@@ -1,0 +1,27 @@
+{
+   "id": "beon-foundation.language-pack-pt-br",
+  "name": "Portuguese (Brazil) for Beon Code",
+  "description": "Brazilian Portuguese language pack for Beon Code.",
+  "publisher": "beon-foundation",
+  "version": "0.1.0",
+  "apiVersion": "1.0",
+  "kind": "language-pack",
+  "repository": {
+    "url": "https://github.com/Beon-Foundation/BeonCode-Brazilian-Portuguese"
+  },
+  "contributes": {
+    "localizations": [
+      {
+        "languageId": "pt-BR",
+        "languageName": "Portuguese (Brazil)",
+        "localizedLanguageName": "Português (Brasil)",
+        "translations": [
+          {
+            "id": "beon",
+            "path": "./translations/main.i18n.json"
+          }
+        ]
+      }
+    ]
+  }
+}
